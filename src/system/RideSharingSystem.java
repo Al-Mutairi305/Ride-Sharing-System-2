@@ -7,19 +7,14 @@ Abdulelah --> RideList
 import java.io.*;
 
 import driver.Driver;
-import driver.DriverList;
 import driver.IDriver;
-import driver.IDriverList;
 import driver.VehicleType;
 import ride.IRide;
-import ride.IRideList;
 import ride.PrivateRide;
-import ride.RideList;
 import ride.SharedRide;
 import rider.IRider;
-import rider.IRiderList;
 import rider.Rider;
-import rider.RiderList;
+
 
 public class RideSharingSystem implements IRideSharingSystem {
 

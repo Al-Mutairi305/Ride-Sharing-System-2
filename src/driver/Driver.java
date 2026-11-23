@@ -9,15 +9,8 @@ public class Driver extends Person implements IDriver {
     public Driver(int id, String name, String phoneNumber, String vehiclePlate, VehicleType vehicleType)
             throws IllegalArgumentException {
         super(id, name, phoneNumber);
-        setVehiclePlate(vehiclePlate);
         this.vehicleType = vehicleType;
-    }
 
-    public String getVehiclePlate() {
-        return vehiclePlate;
-    }
-
-    public void setVehiclePlate(String vehiclePlate) throws IllegalArgumentException {
         if (vehiclePlate.length() != 7)
             throw new IllegalArgumentException("Invalid vehicle plate, must have exactly 3 uppercase letters at start followed by 4 digits.");
 
@@ -39,12 +32,12 @@ public class Driver extends Person implements IDriver {
         this.vehiclePlate = vehiclePlate;
     }
 
-    public VehicleType getVehicleType() {
-        return vehicleType;
+    public String getVehiclePlate() {
+        return vehiclePlate;
     }
 
-    public void setVehicleType(VehicleType vehicleType) {
-        this.vehicleType = vehicleType;
+    public VehicleType getVehicleType() {
+        return vehicleType;
     }
 
     public int compareTo(IDriver other) {
