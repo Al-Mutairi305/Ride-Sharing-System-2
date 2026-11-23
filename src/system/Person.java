@@ -7,6 +7,7 @@ public abstract class Person implements IPerson {
     protected String name;
     protected String phoneNumber;
     protected final int id;
+    protected IBST<ITimeSlot, IRide> schedule;
 
     public Person(int id, String name, String phoneNumber) throws IllegalArgumentException {
         this.id = id;
@@ -41,7 +42,7 @@ public abstract class Person implements IPerson {
     }
 
     public IBST<ITimeSlot, IRide> getSchedule() {
-        
+        return schedule;
     }
 
     
