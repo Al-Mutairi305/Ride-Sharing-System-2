@@ -1,7 +1,8 @@
 package system;
 /**
- * Minimal date/time abstraction used by private rides and shared rides.
+ * Minimal date/time abstraction used by time slots.
  * Implementations must define chronological ordering via compareTo.
+ * (Same methods as in Phase 1.)
  */
 public interface IDateTime extends Comparable<IDateTime> {
 
@@ -27,9 +28,7 @@ public interface IDateTime extends Comparable<IDateTime> {
      * Compares this date/time with another chronologically: by year, then
      * month, then day, then hour, then minute. Returns a negative integer,
      * zero, or a positive integer as this date/time is earlier than, equal
-     * to, or later than the other date/time. This ordering is what
-     * schedulePrivateRide and scheduleSharedRide must use to detect whether
-     * two time ranges overlap.
+     * to, or later than the other date/time.
      */
     @Override
     int compareTo(IDateTime other);
