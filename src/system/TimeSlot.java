@@ -1,6 +1,6 @@
 package system;
 
-public class TimeSlot {
+public class TimeSlot implements ITimeSlot {
 
     private final IDateTime start;
     private final IDateTime end;
