@@ -13,6 +13,7 @@ public abstract class Person implements IPerson {
         this.id = id;
         this.name = name;
         setPhoneNumber(phoneNumber);
+        schedule = new BST<ITimeSlot, IRide>();
     }
 
     public int getId() {

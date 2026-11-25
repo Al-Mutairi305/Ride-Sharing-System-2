@@ -2,7 +2,7 @@ package system;
 // Generic BST class
 public class BST<K extends Comparable<K>, T> implements IBST<K, T> {
 
-    public BSTNode<K, T> root, current;
+    private BSTNode<K, T> root, current;
     private int size;                       // Number of keys in the binary search tree.
 
     public BST() {
@@ -25,18 +25,19 @@ public class BST<K extends Comparable<K>, T> implements IBST<K, T> {
         BSTNode<K, T> node = root;
         BSTNode<K, T> parent = null;
         while (node != null) {
-            
-            if (key.compareTo(node.key) == 0) {               // Found key.
+            int compareResult = key.compareTo(node.key);      // Compare only once.
+
+            if (compareResult == 0) {                         // Found key.
                 current = node;
                 return true;
             }
-
+            
             parent = node;
 
-            if (key.compareTo(node.key) > 0) {                // Key at current node is less than key. Eliminate left subtree.
+            if (compareResult > 0) {                         // Key at current node is less than key. Eliminate left subtree.
                 node = node.right;
             
-            } else {                                       // Key at current node is greater than key. Eliminate right subtree.
+            } else {                                         // Key at current node is greater than key. Eliminate right subtree.
                 node = node.left; 
             }
         }
@@ -112,7 +113,7 @@ public class BST<K extends Comparable<K>, T> implements IBST<K, T> {
                 min = min.left;
             }
 
-            nodeToRemove.key = min.key;
+            nodeToRemove.key = min.key;                                       // Copy the values of the minimum node at the right subtree to the node to be removed.
             nodeToRemove.data = min.data;
 
             deleteNode(min, parent);
@@ -214,11 +215,12 @@ public class BST<K extends Comparable<K>, T> implements IBST<K, T> {
 
         while (temp != null) {
            result++;       
+            int compareResult = key.compareTo(temp.key);
 
-            if (key.compareTo(temp.key) == 0)
+            if (compareResult == 0)
                 break;
 
-            if (key.compareTo(temp.key) < 0) 
+            if (compareResult < 0) 
                 temp = temp.left;
             else
                 temp = temp.right;

@@ -22,9 +22,9 @@ public class TimeSlot implements ITimeSlot {
     }
 
     public int compareTo(ITimeSlot other) {
-        if (this.end.compareTo(other.getStart()) <=0)             // this slot ends at or before other starts.
+        if (this.end.compareTo(other.getStart()) <=0)             // This slot ends at or before other starts.
             return -1;
-        if (this.start.compareTo(other.getEnd()) >= 0)            // a positive value if this slot starts at or after other ends.
+        if (this.start.compareTo(other.getEnd()) >= 0)            // A positive value if this slot starts at or after other ends.
             return 1;
         return 0;                                                 // 0 if the two slots overlap.
     }

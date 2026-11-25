@@ -1,9 +1,5 @@
 package system;
-/* Each team memmber must implement the RideSharingSystem class's methods that correspond to their designated list class as follows:
-Khaled --> DriverList
-Omar --> RiderList
-Abdulelah --> RideList
-*/
+
 import java.io.*;
 
 import driver.Driver;
