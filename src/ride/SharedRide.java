@@ -1,38 +1,39 @@
 package ride;
 import driver.IDriver;
 import rider.IRider;
-import system.IDateTime;
+import system.ITimeSlot;
 import system.LinkedList;
 import system.Node;
+import system.IBST;
+import system.BST;
 
 public class SharedRide extends Ride implements ISharedRide {
 
-    private IRiderList participants;
+    private IBST<Integer, IRider> participants;
 
-    public SharedRide(int rideID, String pickupLocation, String dropoffLocation, IDriver driver, IDateTime pickupTime,
-            IDateTime dropoffTime) {
-        super(rideID, pickupLocation, dropoffLocation, driver, pickupTime, dropoffTime);
-        participants = new RiderList();
+    public SharedRide(int rideID, String pickupLocation, String dropoffLocation, ITimeSlot timeSlot, IDriver driver) {
+        super(rideID, pickupLocation, dropoffLocation, timeSlot, driver);
+        participants = new BST<Integer, IRider>();
     }
 
     public boolean hasRider(int riderId) {
-        return participants.findById(riderId) != null;
+        return participants.findKey(riderId);
     }
 
     public LinkedList<IRider> getParticipants() {
-        return participants.getAll();
+        return participants.inOrder();
     }
 
     public boolean addParticipant(IRider rider) {
-        return participants.add(rider);
+        return participants.insert(rider.getId(), rider);
     }
 
     public boolean removeParticipantById(int riderId) {
-        return participants.removeById(riderId);
+        return participants.removeKey(riderId);
     }
 
     public boolean isEmpty() {
-        return participants.size() == 0;
+        return participants.empty();
     }
 
     public String toString() {
@@ -46,7 +47,7 @@ public class SharedRide extends Ride implements ISharedRide {
             return sharedRide;
         }
 
-        LinkedList<IRider> list = participants.getAll();
+        LinkedList<IRider> list = getParticipants();
         Node<IRider> current = list.getHead();
 
         while (current.getNext() != null) {

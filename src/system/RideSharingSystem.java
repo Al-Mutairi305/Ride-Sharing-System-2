@@ -2,26 +2,38 @@ package system;
 
 import java.io.*;
 
-import driver.Driver;
-import driver.IDriver;
-import driver.VehicleType;
-import ride.IRide;
-import ride.PrivateRide;
-import ride.SharedRide;
-import rider.IRider;
-import rider.Rider;
+import rider.*;
+import driver.*;
+import ride.*;
 
 
 public class RideSharingSystem implements IRideSharingSystem {
 
-    private IRiderList riderList;
-    private IDriverList driverList;
-    public IRideList rideList;
+        private IBST<Integer, IRider> ridersById;
+        private IBST<String, IBST<Integer, IRider>> ridersByName;
+        private IBST<String, IBST<Integer, IRider>> ridersByHomeCity;
+       
+        private IBST<Integer, IDriver> driversById;
+        private IBST<String, IDriver> driversByPlate;
+        private IBST<VehicleType, IBST<Integer, IDriver>> driversByVehicleType;
+       
+        private IBST<Integer, IRide> ridesById;
+        private IBST<String, IBST<Integer, IRide>> ridesByPickupLocation;
+        private IBST<IDateTime, IBST<Integer, IRide>> ridesByPickupTime;          
 
     public RideSharingSystem() {
-        riderList = new RiderList();
-        driverList = new DriverList();
-        rideList = new RideList();
+        ridersById = new BST<Integer, IRider>();
+        ridersByName = new BST<String, IBST<Integer, IRider>>(); 
+        ridersByHomeCity = new BST<String, IBST<Integer, IRider>>();
+       
+        driversById = new BST<Integer, IDriver>();
+        driversByPlate = new BST<String, IDriver>();
+        driversByVehicleType = new BST<VehicleType, IBST<Integer, IDriver>>();
+       
+        ridesById = new BST<Integer, IRide>();
+        ridesByPickupLocation = new BST<String, IBST<Integer, IRide>>();
+        ridesByPickupTime = new BST<IDateTime, IBST<Integer, IRide>>();
+        
     }
 
     public boolean loadRidersFromCSV(String ridersFilePath) throws IllegalArgumentException {
@@ -156,138 +168,77 @@ public class RideSharingSystem implements IRideSharingSystem {
         
         return true;
     }
+    
+    // ---------------------------------------------------------------- riders
 
-    public boolean addRider(IRider rider) {  // We will assume that "Invalid" refers to invalid phone number.
-        try {
-            rider.setPhoneNumber(rider.getPhoneNumber());  // Check if phone number is valid.
-
-        } catch (IllegalArgumentException e) {
+    public boolean addRider(IRider rider) {
+        if (!ridersById.insert(rider.getId(), rider))                               // Check uniqueness and adding at the same time.
             return false;
-        }
 
-        return riderList.add(rider);
+            if (ridersByName.findKey(rider.getName())) {
+                ridersByName.retrieve().insert(rider.getId(), rider);               // Current now points to the inner tree (rider's name).
+            } else {
+                ridersByName.insert(rider.getName(), new BST<Integer, IRider>());
+                ridersByName.retrieve().insert(rider.getId(), rider);              // Current now points to new inner tree.
+            }
 
+            if (ridersByHomeCity.findKey(rider.getHomeCity())) {
+                ridersByHomeCity.retrieve().insert(rider.getId(), rider);
+            } else {
+                ridersByHomeCity.insert(rider.getHomeCity(), new BST<Integer, IRider>());
+                ridersByHomeCity.retrieve().insert(rider.getId(), rider);
+            }
+            return true;
     }
 
-    public boolean addDriver(IDriver driver) {   // We will assume that "Invalid" refers to invalid phone number or vehicle plate
-        try {
-            driver.setPhoneNumber(driver.getPhoneNumber());    // Check if information are valid inside the try-catch block.
-            driver.setVehiclePlate(driver.getVehiclePlate());
-
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-
-        return driverList.add(driver);                 // DriverList.add() will check for uniqueness.
-    }
 
     public IRider searchRiderById(int riderId) {
-        return riderList.findById(riderId);
-    }
-
-    public IRider searchRiderByEmail(String email) {
-        return riderList.findByEmail(email);
+        if (ridersById.findKey(riderId))
+            return ridersById.retrieve();                       // If found, current will point to it, making retrieve valid.
+        return null;
     }
 
     public LinkedList<IRider> searchRidersByName(String fullName) {
-        return riderList.findByName(fullName);
+        if (!ridersByName.findKey(fullName)) 
+            return new LinkedList<IRider>();                        // Return an empty list if not found.
+        return ridersByName.retrieve().inOrder();                   // Current pooints to the inner tree of "fullName";
     }
 
     public LinkedList<IRider> searchRidersByHomeCity(String homeCity) {
-        return riderList.findByHomeCity(homeCity);
+        if (!ridersByHomeCity.findKey(homeCity))
+            return new LinkedList<IRider>();
+        return ridersByHomeCity.retrieve().inOrder();
     }
 
     public LinkedList<IRider> getAllRiders() {
-        return riderList.getAll();
-    }
-
-    public IDriver searchDriverById(int driverId) {
-        return driverList.findById(driverId);
-    }
-
-    public IDriver searchDriverByVehiclePlate(String vehiclePlate) {
-        return driverList.findByVehiclePlate(vehiclePlate);
-    }
-
-    public LinkedList<IDriver> searchDriversByVehicleType(VehicleType vehicleType) {
-        return driverList.findByVehicleType(vehicleType);
-    }
-
-    public LinkedList<IDriver> getAllDrivers() {
-        return driverList.getAll();
+        return ridersById.inOrder();
     }
 
     public boolean removeRider(int riderId) {
         IRider rider = searchRiderById(riderId);
-        if (rider == null)                          // Check if the rider does not exist.
-        return false;
-        
-        LinkedList<IRide> rideHistory = rider.getRideHistory();             // Get all rides associated with the rider to remove them.
-        Node<IRide> currentRideNode = rideHistory.getHead();
+        if (rider == null)
+            return false;
 
-        while (currentRideNode != null) {
-            IRide ride = currentRideNode.getData();
-            IDriver driver = currentRideNode.getData().getDriver();
+        // Remove rider
+        ridersById.removeKey(riderId);
 
-            if (ride instanceof PrivateRide) {                 // Rides associated with the rider can be a mix of private and shared rides.
-                rideList.removeRideById(ride.getRideId());
-                ((Person)driver).removeFromRideHistory(ride.getRideId());
-                ((Person)rider).removeFromRideHistory(ride.getRideId());
+        ridersByName.findKey(rider.getName());               // ALWAYS returns true.    
+        ridersByName.retrieve().removeKey(riderId);          // Access the inner BST and remove the rider from it.
+        if (ridersByName.retrieve().empty()) 
+            ridersByName.removeKey(rider.getName());
 
-            } else {
-                ((SharedRide)ride).removeParticipantById(riderId);
-                ((Person)rider).removeFromRideHistory(ride.getRideId());
+        ridersByHomeCity.findKey(rider.getHomeCity());
+        ridersByHomeCity.retrieve().removeKey(riderId);
+        if (ridersByHomeCity.retrieve().empty())
+            ridersByHomeCity.removeKey(rider.getHomeCity());
 
-                if (((SharedRide)ride).isEmpty()) {
-                    rideList.removeRideById(ride.getRideId());          // Remove the shared ride if it no longer has any participants.
-                    ((Person)driver).removeFromRideHistory(ride.getRideId());  // Remove the shared ride from the driver's ride history.
-                }
-            }
-
-            currentRideNode = currentRideNode.getNext();
-        }
-
-        riderList.removeById(riderId);               // Finally, remove the rider from RideSharingSystem ride history.
-        return true;
-
+        // Cascade delete 
+        // TODO: Implement cancelRide first.
     }
 
+    
     public boolean removeDriver(int driverId) {
-        IDriver driver = searchDriverById(driverId);
-        if (driver == null)                              // Check if the driver does not exist.
-            return false;
-        
-        LinkedList<IRide> rideHistory = driver.getRideHistory();          // Get all rides associated with this driver.
-        Node<IRide> currentRideNode = rideHistory.getHead();
 
-        while (currentRideNode != null) {       // Traverse the rides and remove them from RideSharingSystem's rideList.
-            IRide ride = currentRideNode.getData();
-            ((Person)driver).removeFromRideHistory(ride.getRideId());    // Remove the ride from the driver's ride history
-            this.rideList.removeRideById(ride.getRideId());
-
-            if (ride instanceof PrivateRide) {
-                IRider rider = ((PrivateRide)ride).getRider();
-                ((Person)rider).removeFromRideHistory(ride.getRideId());   // Remove the private ride from the rider's ride history.
-
-            } else {
-                LinkedList<IRider> riderList = ((SharedRide)ride).getParticipants();          // Traverse the shared ride's riders list and remove the ride from each rider's ride history.
-                Node<IRider> currentRiderNode = riderList.getHead();
-
-                while (currentRiderNode != null) {
-                    IRider rider = currentRiderNode.getData();
-                    ((Person)rider).removeFromRideHistory(ride.getRideId());
-
-                    currentRiderNode = currentRiderNode.getNext();
-                }
-
-            }
-
-            currentRideNode = currentRideNode.getNext();
-
-        }
-
-        driverList.removeById(driverId);        // Finally, remove the driver from RideSharingSystem's driverList.
-        return true;
 
     }
 
