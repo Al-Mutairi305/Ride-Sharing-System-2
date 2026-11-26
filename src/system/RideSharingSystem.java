@@ -229,16 +229,72 @@ public class RideSharingSystem implements IRideSharingSystem {
 
         ridersByHomeCity.findKey(rider.getHomeCity());
         ridersByHomeCity.retrieve().removeKey(riderId);
-        if (ridersByHomeCity.retrieve().empty())
+        if (ridersByHomeCity.retrieve().empty())            // Current of outer BST still points to the same inner BST.
             ridersByHomeCity.removeKey(rider.getHomeCity());
 
         // Cascade delete 
         // TODO: Implement cancelRide first.
     }
 
-    
-    public boolean removeDriver(int driverId) {
+    // --------------------------------------------------------------- drivers
+    public boolean addDriver(IDriver driver) {
+        if (driversById.findKey(driver.getId()) || driversByPlate.findKey(driver.getVehiclePlate()))     // Check uniqueness first.
+            return false;
 
+            driversById.insert(driver.getId(), driver);
+
+            driversByPlate.insert(driver.getVehiclePlate(), driver);
+
+            if (driversByVehicleType.findKey(driver.getVehicleType())) 
+                driversByVehicleType.retrieve().insert(driver.getId(), driver);
+            else {
+                driversByVehicleType.insert(driver.getVehicleType(), new BST<Integer, IDriver>());
+                driversByVehicleType.retrieve().insert(driver.getId(), driver);
+            }
+            return true;
+    }
+
+    public IDriver searchDriverById(int driverId) {
+        if (driversById.findKey(driverId))
+            return driversById.retrieve();
+        return null;
+    }
+
+    public LinkedList<IDriver> searchDriversByVehicleType(VehicleType vehicleType) {
+        if (driversByVehicleType.findKey(vehicleType))
+            return driversByVehicleType.retrieve().inOrder();
+        return new LinkedList<IDriver>();
+    }
+
+    public LinkedList<IDriver> getAllDrivers() {
+        return driversById.inOrder();
+    }
+
+    public boolean removeDriver(int driverId) {
+        if (!driversById.findKey(driverId))
+            return false;
+        IDriver driver = driversById.retrieve();
+
+        // Remove driver
+        driversById.removeKey(driverId);
+
+        driversByPlate.removeKey(driver.getVehiclePlate());
+
+        driversByVehicleType.findKey(driver.getVehicleType());
+        driversByVehicleType.retrieve().removeKey(driverId);                        // Remove the driver from the inner BST.
+        if (driversByVehicleType.retrieve().empty())                                // Current still points to the same inner BST.
+            driversByVehicleType.removeKey(driver.getVehicleType());
+
+        // Cascade delete
+        LinkedList<IRide> driverSchedule = driver.getSchedule().inOrder();          // Get all rides associated with the driver
+        Node<IRide> pointer = driverSchedule.getHead();                             // and cancel each one.
+        while (pointer != null) {
+            IRide ride = pointer.getData();
+            cancelRide(ride.getRideId());                                           // cancelRide will make sure the ride is deleted
+            pointer = pointer.getNext();                                            // from every index and every person's schedule.
+        }   
+
+        return true;
 
     }
 
