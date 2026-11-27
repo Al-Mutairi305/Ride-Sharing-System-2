@@ -1,6 +1,6 @@
 package ride;
 import driver.IDriver;
-import system.IDateTime;
+import system.ITimeSlot;
 
 public abstract class Ride implements IRide {
 
@@ -8,16 +8,14 @@ public abstract class Ride implements IRide {
     protected String pickupLocation;
     protected String dropoffLocation;
     protected IDriver driver;
-    protected final IDateTime pickupTime;
-    protected final IDateTime dropoffTime;
+    protected final ITimeSlot timeSlot;
 
-    public Ride(int rideID, String pickupLocation, String dropoffLocation, IDriver driver, IDateTime pickupTime, IDateTime dropoffTime) {
+    public Ride(int rideID, String pickupLocation, String dropoffLocation, IDriver driver, ITimeSlot timeSlot) {
         this.rideID = rideID;
         this.pickupLocation = pickupLocation;
         this.dropoffLocation = dropoffLocation;
         this.driver = driver;
-        this.pickupTime = pickupTime;
-        this.dropoffTime = dropoffTime;
+        this.timeSlot = timeSlot;
     }
 
         // Returns the unique internal ride ID.
@@ -35,14 +33,9 @@ public abstract class Ride implements IRide {
         this.pickupLocation = pickupLocation;
     }
 
-    // Returns the pickup date/time of the ride.
-    public IDateTime getPickupTime() {
-        return pickupTime;
-    }
-
-    // Returns the drop-off date/time of the ride.
-    public IDateTime getDropoffTime() {
-        return dropoffTime;
+    // Returns the time slot [pickup date/time, drop-off date/time).
+    public ITimeSlot getTimeSlot() {
+        return timeSlot;
     }
 
     // Returns the drop-off location of the ride.
@@ -72,15 +65,15 @@ public abstract class Ride implements IRide {
     @Override
     public String toString() {
         return String.format("Ride ID: %s, Driver: %s, Pickup Location: %s, Dropoff Location: %s, Pickup Time: %s, Dropoff Time: %s"
-                , rideID, driver.getName(), pickupLocation, dropoffLocation, pickupTime.format(), dropoffTime.format());
+                , rideID, driver.getName(), pickupLocation, dropoffLocation, timeSlot.getStart(), timeSlot.getEnd());
     }
 
-    // Compares rides alphabetically by pickup location.
+    // Compares rides by ride ID (negative, zero, or positive).
     @Override
     public int compareTo(IRide other) {
-        if (pickupLocation.compareToIgnoreCase(other.getPickupLocation()) < 0) {
+        if (rideID < other.getRideId()) {
             return -1;
-        } else if (pickupLocation.compareToIgnoreCase(other.getPickupLocation()) > 0) {
+        } else if (rideID > other.getRideId()) {
             return 1;
         } else {
             return 0;

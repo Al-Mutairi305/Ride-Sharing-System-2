@@ -1,13 +1,13 @@
 package ride;
 import driver.IDriver;
 import rider.IRider;
-import system.IDateTime;
+import system.ITimeSlot;
 
 public class PrivateRide extends Ride implements IPrivateRide{
     private IRider rider;
 
-    public PrivateRide(int rideID, String pickupLocation, String dropoffLocation, IDriver driver, IDateTime pickupTime, IDateTime dropoffTime, IRider rider) {
-        super(rideID, pickupLocation, dropoffLocation, driver, pickupTime, dropoffTime);
+    public PrivateRide(int rideID, String pickupLocation, String dropoffLocation, IDriver driver, ITimeSlot timeSlot, IRider rider) {
+        super(rideID, pickupLocation, dropoffLocation, driver, timeSlot);
         this.rider = rider;
     }
 
@@ -19,14 +19,10 @@ public class PrivateRide extends Ride implements IPrivateRide{
         return rider;
     }
 
-    public void setRider(IRider rider) {
-        this.rider = rider;
-    }
-
     @Override
     public String toString() {
         return "Ride Type: Private" + "\nRide ID: " + rideID + "\nDriver: " + driver.getName()
                 + "\nPickup Location: " + pickupLocation + "\nDropoff Location: " + dropoffLocation
-        + "\nPickup Time: " + pickupTime.format() + "\nDropoff Time: " + dropoffTime.format()+ "\nRider: "+rider.getName();
+        + "\nPickup Time: " + timeSlot.getStart() + "\nDropoff Time: " + timeSlot.getEnd()+ "\nRider: "+rider.getName();
     }
 }
