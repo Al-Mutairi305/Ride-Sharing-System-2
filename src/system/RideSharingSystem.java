@@ -123,64 +123,66 @@ public class RideSharingSystem implements IRideSharingSystem {
         }
     }
 
-    public boolean loadRidesFromCSV(String ridesFilePath) {
+    public int loadRidesFromCSV(String ridesFilePath) {
         BufferedReader bufferedReader = null;
         String lineRead = "";
+        int numberLoaded = 0;
 
         try {
             FileReader fileReader = new FileReader(ridesFilePath);
             bufferedReader = new BufferedReader(fileReader);
+            while(true) {
+                try {
+                    if ((lineRead = bufferedReader.readLine()) == null)
+                        return numberLoaded;
+                    String[] row = lineRead.split(",");
+                    String rideType = row[0];
+                    String pickupLocation = row[2];
+                    String pickupTimeString = row[2];
+                    int[] pickupTimeArray = dateTimeRetrieve(pickupTimeString);
+                    IDateTime pickupTime = new DateTime(pickupTimeArray[0], pickupTimeArray[1], pickupTimeArray[2], pickupTimeArray[3], pickupTimeArray[4]);
+                    String dropoffTimeString = row[3];
+                    int[] dropoffTimeArray = dateTimeRetrieve(dropoffTimeString);
+                    IDateTime dropoffTime = new DateTime(dropoffTimeArray[0], dropoffTimeArray[1], dropoffTimeArray[2], dropoffTimeArray[3], dropoffTimeArray[4]);
+                    ITimeSlot timeSlot = new TimeSlot(pickupTime, dropoffTime);
+                    String dropoffLocation = row[4];
+                    int driverId = Integer.parseInt(row[5]);
+                    if (rideType.equals("PRIVATE")) {
+                        int riderId = Integer.parseInt(row[6]);
+                        schedulePrivateRide(pickupLocation, dropoffLocation, timeSlot, riderId, driverId);
 
-            while ((lineRead = bufferedReader.readLine()) != null) {
-                // Format of each line is "RIDETYPE, PICKUPLOCATION, PICKUPDATE, DROPOFFDATE, DROPOFFLOCATION, DRIVERID, RIDERID(s)"
-                String[] row = lineRead.split(",");
-                String rideType = row[0];
-                String pickupLocation = row[1];
-                String pickupTimeString = row[2];
-                int[] pickupTimeArray = dateTimeRetrieve(pickupTimeString);
-                IDateTime pickupTime = new DateTime(pickupTimeArray[0], pickupTimeArray[1], pickupTimeArray[2], pickupTimeArray[3], pickupTimeArray[4]);
-                String dropoffTimeString = row[3];
-                int[] dropoffTimeArray = dateTimeRetrieve(dropoffTimeString);
-                IDateTime dropoffTime = new DateTime(dropoffTimeArray[0], dropoffTimeArray[1], dropoffTimeArray[2], dropoffTimeArray[3], dropoffTimeArray[4]);
-                String dropoffLocation = row[4];
-                int driverId = Integer.parseInt(row[5]);
-                
-                if (rideType.equals("PRIVATE")) {
-                    int riderId = Integer.parseInt(row[6]);
-                    schedulePrivateRide(pickupLocation, pickupTime, dropoffTime, dropoffLocation, riderId, driverId);
-                    
-            
-                } else {
-                    String[] riders = row[6].split(";");           // Split the 7th column which contains the riders' ids, each separated by ";", then store them in an array.
-                    int[] riderIds = new int[riders.length];
+                    } else {
+                        String[] riders = row[6].split(";");           // Split the 7th column which contains the riders' ids, each separated by ";", then store them in an array.
+                        int[] riderIds = new int[riders.length];
 
-                    for (int i = 0; i < riderIds.length; i++)
-                        riderIds[i] = Integer.parseInt(riders[i]);
+                        for (int i = 0; i < riderIds.length; i++)
+                            riderIds[i] = Integer.parseInt(riders[i]);
 
-                    scheduleSharedRide(pickupLocation, pickupTime, dropoffTime, dropoffLocation, riderIds, driverId);
+                        scheduleSharedRide(pickupLocation, dropoffLocation, timeSlot, riderIds, driverId);
 
+                    }
+                    numberLoaded++;
+
+                } catch (Exception e) {
+                    continue;
                 }
-                
             }
 
         } catch (IOException e) {
             System.out.println(e.getMessage());
-            return false;
+            return -1;
 
         } finally {
-            
             try {
                 bufferedReader.close();
+
             } catch (Exception e) {
                 System.out.println(e.getMessage());
-                return false;
+                return -1;
             }
-            
         }
-        
-        return true;
     }
-    
+
     // ---------------------------------------------------------------- riders
 
     public boolean addRider(IRider rider) {
@@ -202,7 +204,6 @@ public class RideSharingSystem implements IRideSharingSystem {
             }
             return true;
     }
-
 
     public IRider searchRiderById(int riderId) {
         if (ridersById.findKey(riderId))
@@ -463,7 +464,6 @@ public class RideSharingSystem implements IRideSharingSystem {
         }
         return resultTree.inOrder();
     }
-
 
     public LinkedList<IRide> getAllRidesAlphabetically() {
         return ridesById.inOrder();
