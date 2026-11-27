@@ -36,79 +36,91 @@ public class RideSharingSystem implements IRideSharingSystem {
         
     }
 
-    public boolean loadRidersFromCSV(String ridersFilePath) throws IllegalArgumentException {
+    public int loadRidersFromCSV(String ridersFilePath) throws IllegalArgumentException {
         BufferedReader bufferedReader = null;
         String lineRead = "";
+        int numberLoaded = 0;
 
         try {
             FileReader fileReader = new FileReader(ridersFilePath);
             bufferedReader = new BufferedReader(fileReader);
+            while (true) {
+                try {
+                    if ((lineRead = bufferedReader.readLine()) == null)          // readLine() returns null when it reaches the end of the file.
+                        return numberLoaded; 
+                    String[] row = lineRead.split(",");
+                    int id = Integer.parseInt(row[0]);
+                    String name = row[1];
+                    String email = row[2];
+                    String phoneNumber = row[3];
+                    String homeCity = row[4];
+                    IRider rider = new Rider(id, name, email, phoneNumber, homeCity);
+                    addRider(rider);
+                    numberLoaded++;
 
-            while ((lineRead = bufferedReader.readLine()) != null) {
-                String[] row = lineRead.split(",");
-                int id = Integer.parseInt(row[0]);
-                String name = row[1];
-                String email = row[2];
-                String phoneNumber = row[3];
-                String homeCity = row[4];
-                IRider rider = new Rider(id, name, phoneNumber, email, homeCity);
-                addRider(rider);
+                } catch (Exception e) {                // Skip lines that could not be parsed or added.
+                    continue;
+                }
+
             }
-
+        
         } catch (IOException e) {
-            System.out.println(e.getMessage());
-            return false;
+            return -1;
 
         } finally {
             
             try {
                 bufferedReader.close();
+
             } catch (Exception e) {
-                System.out.println(e.getMessage());
-                return false;
+                return -1;
             }
             
         }
-        
-        return true;
-    
     }
 
-    public boolean loadDriversFromCSV(String driversFilePath) throws IllegalArgumentException {
+    public int loadDriversFromCSV(String driversFilePath) throws IllegalArgumentException {
         BufferedReader bufferedReader = null;
         String lineRead = "";
+        int numberLoaded = 0;
 
         try {
             FileReader fileReader = new FileReader(driversFilePath);
             bufferedReader = new BufferedReader(fileReader);
+            while(true) {
+                try {
+                    if ((lineRead = bufferedReader.readLine()) == null)
+                        return numberLoaded;
+                    String[] row = lineRead.split(",");
+                    int id = Integer.parseInt(row[0]);
+                    String name = row[1];
+                    String phoneNumber = row[2];
+                    String vehiclePlate = row[3];
+                    VehicleType vehicleType = VehicleType.valueOf(row[4]);
+                    IDriver driver = new Driver(id, name, phoneNumber, vehiclePlate, vehicleType);
+                    addDriver(driver);
+                    numberLoaded++;
 
-            while ((lineRead = bufferedReader.readLine()) != null) {
-                String[] row = lineRead.split(",");
-                int id = Integer.parseInt(row[0]);
-                String name = row[1];
-                String phoneNumber = row[2];
-                String vehiclePlate = row[3];
-                VehicleType vehicleType = VehicleType.valueOf(row[4]);
-                IDriver driver = new Driver(id, name, phoneNumber, vehiclePlate, vehicleType);
-                addDriver(driver);
-            }
+                } catch (Exception e) {
+                    continue;
+                }
+            }   
 
         } catch (IOException e) {
             System.out.println(e.getMessage());
-            return false;
+            return -1;
 
         } finally {
             
             try {
                 bufferedReader.close();
+
             } catch (Exception e) {
                 System.out.println(e.getMessage());
-                return false;
+                return -1;
             }
             
         }
-        
-        return true;
     }
 
     public boolean loadRidesFromCSV(String ridesFilePath) {
@@ -237,6 +249,7 @@ public class RideSharingSystem implements IRideSharingSystem {
     }
 
     // --------------------------------------------------------------- drivers
+
     public boolean addDriver(IDriver driver) {
         if (driversById.findKey(driver.getId()) || driversByPlate.findKey(driver.getVehiclePlate()))     // Check uniqueness first.
             return false;
@@ -295,8 +308,9 @@ public class RideSharingSystem implements IRideSharingSystem {
         }   
 
         return true;
-
     }
+
+    // ----------------------------------------------------------------- rides
 
     public boolean schedulePrivateRide(String pickupLocation, IDateTime pickupTime, IDateTime dropoffTime, String dropoffLocation, int riderId, int driverId){
         // Checks if rider and driver exist.
@@ -317,77 +331,135 @@ public class RideSharingSystem implements IRideSharingSystem {
         return false;
     }
 
-    public boolean scheduleSharedRide(String pickupLocation, IDateTime pickupTime, IDateTime dropoffTime, String dropoffLocation, int[] riderIds, int driverId) {
+    public int scheduleSharedRide(String pickupLocation, String dropoffLocation, ITimeSlot timeSlot, int[] riderIds, int driverId) {
         IDriver driver = searchDriverById(driverId);
-        if (driver == null)
-            return false;
+        if (driver == null || riderIds.length < 2 || hasConflict(timeSlot, driver))
+            return -1;
+
+        // Create the SharedRide object and fill it with participants
         int rideId = generateUniqueRideId();
-        IRide sharedRide = new SharedRide(rideId, pickupLocation, dropoffLocation, driver, pickupTime, dropoffTime);
+        IRide sharedRide = new SharedRide(rideId, pickupLocation, dropoffLocation, timeSlot, driver);
 
-        for (int i = 0; i < riderIds.length; i++) {
-                    
-                    int riderId = riderIds[i];
-                    IRider rider = searchRiderById(riderId);
-                    if (rider == null)
-                    return false;
-                    ((SharedRide)sharedRide).addParticipant(rider);   // addParticipants ensure no duplicates will be added.
+        for (int i = 0; i < riderIds.length; i++) {       
+            int riderId = riderIds[i];
+            IRider rider = searchRiderById(riderId);
+            if (rider == null)
+                return -1;
 
+            if (hasConflict(timeSlot, rider) || !((SharedRide)sharedRide).addParticipant(rider))    // If there are duplicate riders, or given rider has conflict, return -1;
+                return -1;
                 
         }
 
-        if (hasConflict(sharedRide))
-            return false;
+        // At this point, the ride is 100% valid and shall be added to the system. 
+        // Any failed checks earlier will not change the state of the system,
+        // the system's state will change only beyond this point.
 
-        ((Person)driver).addToRideHistory(sharedRide);                 // Add the ride to the system's list, driver's ride history, and each rider's ride history.
-        
-        LinkedList<IRider> sharedRiderList = ((SharedRide)sharedRide).getParticipants();
-        Node<IRider> currentRiderNode = sharedRiderList.getHead();
+        // Add the ride to each associated person's schedule
+        driver.getSchedule().insert(timeSlot, sharedRide);
 
-        while (currentRiderNode != null) {        // Same iterations as previous for loop.
-            IRider rider = currentRiderNode.getData();
-            ((Person)rider).addToRideHistory(sharedRide);
+        LinkedList<IRider> particpants = ((SharedRide)sharedRide).getParticipants();
+        Node<IRider> pointer = particpants.getHead();
+       
+        while (pointer != null) {
+            IRider rider = pointer.getData();
+            rider.getSchedule().insert(timeSlot, sharedRide);
+            pointer = pointer.getNext();
+        }
 
-            currentRiderNode = currentRiderNode.getNext();
+        // Add the ride to each index
+        ridesById.insert(rideId, sharedRide);
+
+        if (ridesByPickupLocation.findKey(pickupLocation))
+            ridesByPickupLocation.retrieve().insert(rideId, sharedRide);
+        else {
+            ridesByPickupLocation.insert(pickupLocation, new BST<Integer, IRide>());
+            ridesByPickupLocation.retrieve().insert(rideId, sharedRide);
+        }
+
+        if (ridesByPickupTime.findKey(timeSlot.getStart()))
+            ridesByPickupTime.retrieve().insert(rideId, sharedRide);
+        else {
+            ridesByPickupTime.insert(timeSlot.getStart(), new BST<Integer, IRide>());
+            ridesByPickupTime.retrieve().insert(rideId, sharedRide);
         }
         
-        rideList.addRide(sharedRide);
+        return rideId;
+    }
+
+    public boolean cancelRide(int rideId) {
+        if (!ridesById.findKey(rideId))                                     // Ride does not exist.
+            return false;
+        IRide ride = ridesById.retrieve();
+
+        // Delete ride
+        ridesById.removeKey(rideId);
+
+        ridesByPickupLocation.findKey(ride.getPickupLocation());
+        ridesByPickupLocation.retrieve().removeKey(rideId);
+        if (ridesByPickupLocation.retrieve().empty())
+            ridesByPickupLocation.removeKey(ride.getPickupLocation());
+
+        ridesByPickupTime.findKey(ride.getTimeSlot().getStart());
+        ridesByPickupTime.retrieve().removeKey(rideId);
+        if (ridesByPickupTime.retrieve().empty()) 
+            ridesByPickupTime.removeKey(ride.getTimeSlot().getStart());
+
+        // Cascade Delete, remove the ride from the schedules of each person associated with it
+        ride.getDriver().getSchedule().removeKey(ride.getTimeSlot());
+
+        if (ride instanceof PrivateRide) {
+            ((PrivateRide)ride).getRider().getSchedule().removeKey(ride.getTimeSlot());
+
+        } else if (ride instanceof SharedRide) {
+            LinkedList<IRider> particpants = ((SharedRide)ride).getParticipants();
+            Node<IRider> pointer = particpants.getHead();
+            
+            while (pointer != null) {
+                IRider rider = pointer.getData();
+                rider.getSchedule().removeKey(ride.getTimeSlot());
+                pointer = pointer.getNext();
+            }
+        }
         return true;
     }
 
     public LinkedList<IRide> searchRidesByPickupLocation(String pickupLocation) {
-        return rideList.findByPickupLocation(pickupLocation);
+        if (ridesByPickupLocation.findKey(pickupLocation))
+            return ridesByPickupLocation.retrieve().inOrder();
+        return new LinkedList<IRide>();
     }
 
     public LinkedList<IRide> searchRidesByRiderName(String riderName) {
-        return rideList.findByRiderName(riderName);
-    }
+        if (!ridersByName.findKey(riderName))
+            return new LinkedList<IRide>();
+        IBST <Integer, IRide> resultTree = new BST<Integer, IRide>();
 
-    public LinkedList<IRider> getSharedRideParticipants(String pickupLocation) {   // PickupLocation is not unique. Therefore, we will traverse every shared ride associated with that pick up location instead.
-        IRiderList result = new RiderList();                                              
-        LinkedList<IRide> rideList = this.rideList.findByPickupLocation(pickupLocation);
-        Node<IRide> currentRideNode = rideList.getHead();
+        LinkedList<IRider> riders = ridersByName.retrieve().inOrder();
+        Node<IRider> riderPointer = riders.getHead();
 
-        while (currentRideNode != null) {
-            IRide ride = currentRideNode.getData();
-            
-            if (ride instanceof SharedRide) {         // Traverse all shared rides from rideList.
-                LinkedList<IRider> participants = ((SharedRide)ride).getParticipants();
-                Node<IRider> currentParticipantNode = participants.getHead();
+        while (riderPointer != null) {                                               // Go through each rider
+            IRider rider = riderPointer.getData();
+            LinkedList<IRide> riderSchedule = rider.getSchedule().inOrder();
+            Node<IRide> ridePointer = riderSchedule.getHead();
 
-                while (currentParticipantNode != null) {              // Traverse each participant from each shared ride.
-                    IRider rider = currentParticipantNode.getData();
-                    result.add(rider);                                         // Using IRiderList's add method to prevent duplicate riders.
-
-                    currentParticipantNode = currentParticipantNode.getNext();
-                }
+            while (ridePointer != null) {                                       // Go through each ride in schedule of a rider.
+                IRide ride = ridePointer.getData();
+                resultTree.insert(ride.getRideId(), ride);                      // Ensure no duplicate rides may be added.
+                ridePointer = ridePointer.getNext();
             }
-            currentRideNode = currentRideNode.getNext();
+            riderPointer = riderPointer.getNext();
         }
-        return result.getAll();
+        return resultTree.inOrder();
     }
+
 
     public LinkedList<IRide> getAllRidesAlphabetically() {
-        return rideList.getAllAlphabetically();
+        return ridesById.inOrder();
+    }
+
+    public LinkedList<IRide> searchRidesByPickupTimeRange(IDateTime from, IDateTime to) {
+        return ridesByPickupTime.rangeSearch(from, to)
     }
 
     // Takes string which contains all date time data ("MM/DD/YYYY HH:MM") in CSV file and puts each part into an integer array
@@ -413,69 +485,20 @@ public class RideSharingSystem implements IRideSharingSystem {
         return proccessedDateTime;
     }
 
-    private boolean hasConflict(IRide ride) {
-        LinkedList<IRide> list = rideList.getAllAlphabetically();
-        Node<IRide> current = list.getHead();
-
-        while (current != null) {
-            IRide currentRide = current.getData();
-
-            if (currentRide instanceof PrivateRide) {         // Compare the private ride with the passed ride.
-                int riderId = ((PrivateRide)currentRide).getRider().getId();
-                
-                if (currentRide.getDriver().getId() == ride.getDriver().getId()    // Check if both rides have common driver or rider.
-                || ride.hasRider(riderId)) {
-
-                    if (ride.getPickupTime().compareTo(currentRide.getDropoffTime()) <0 && currentRide.getPickupTime().compareTo(ride.getDropoffTime()) < 0 )  // The overlap condition (From requirements).
-                        return true;
-                }
-
-            } else if (currentRide instanceof SharedRide) {         // Compare the shared ride with the passed ride.
-                LinkedList<IRider> sharedList = ((SharedRide)currentRide).getParticipants();   // Get the shared ride's list of riders.
-                Node<IRider> currentRiderNode = sharedList.getHead();
-
-                while (currentRiderNode != null) {             // Traverse the list of riders and check if each rider is associated with passed ride or not.
-                    int riderId = currentRiderNode.getData().getId();
-
-                    if (currentRide.getDriver().getId() == ride.getDriver().getId()
-                    || ride.hasRider(riderId))  {
-
-                        if (ride.getPickupTime().compareTo(currentRide.getDropoffTime()) < 0 && currentRide.getPickupTime().compareTo(ride.getDropoffTime()) < 0 )
-                        return true;
-                    }
-
-                    currentRiderNode = currentRiderNode.getNext();
-                }
-            }
-            
-
-            current = current.getNext();
-        }
-
-        return false;
-         
-         
+    // Checks if a given Person's schedule has a conflict with a given ride's time slot.
+    // Conflict is detected if a person already has a scheduled ride at time slot "timeSlot".
+    private boolean hasConflict(ITimeSlot timeSlot, IPerson person) {
+        return person.getSchedule().findKey(timeSlot);    // If a ride at given time slot exists, returns true. Otherwise, false.
     }
 
     // Method that generates a unique ride id for every ride scheduled. No risk of duplicate ids since there is 1 generation per insertion.
     private int generateUniqueRideId() {
-        if (this.rideList.size() == 0)
+        if (this.ridesById.size() == 0)
             return 1;
 
-        LinkedList<IRide> rideList = this.rideList.getAllAlphabetically();
-        int maxId = rideList.getHead().getData().getRideId();
-        Node<IRide> currentRideNode = rideList.getHead().getNext();
-
-        while (currentRideNode != null) {          // Traverse the current ride list to find the maximum ID.
-            IRide ride = currentRideNode.getData();
-
-            if (maxId < ride.getRideId())
-                maxId = ride.getRideId();
-
-            currentRideNode = currentRideNode.getNext();
-        }
-
-        return maxId+1;
+        LinkedList<IRide> rideList = this.ridesById.inOrder();
+        
+        return rideList.getTail().getData().getRideId()+1;            // Max id + 1;
 
     }
 
