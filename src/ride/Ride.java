@@ -10,7 +10,7 @@ public abstract class Ride implements IRide {
     protected IDriver driver;
     protected final ITimeSlot timeSlot;
 
-    public Ride(int rideID, String pickupLocation, String dropoffLocation, IDriver driver, ITimeSlot timeSlot) {
+    public Ride(int rideID, String pickupLocation, String dropoffLocation, ITimeSlot timeSlot, IDriver driver) {
         this.rideID = rideID;
         this.pickupLocation = pickupLocation;
         this.dropoffLocation = dropoffLocation;

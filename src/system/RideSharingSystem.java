@@ -312,23 +312,34 @@ public class RideSharingSystem implements IRideSharingSystem {
 
     // ----------------------------------------------------------------- rides
 
-    public boolean schedulePrivateRide(String pickupLocation, IDateTime pickupTime, IDateTime dropoffTime, String dropoffLocation, int riderId, int driverId){
-        // Checks if rider and driver exist.
-        if (riderList.findById(riderId) != null && driverList.findById(driverId) != null) {
-            int rideID = generateUniqueRideId();
-            IDriver driver = driverList.findById(driverId);
-            IRider rider = riderList.findById(riderId);
-            IRide ride = new PrivateRide(rideID, pickupLocation, dropoffLocation, driver, pickupTime, dropoffTime, rider);
-            // Checks that there is no conflict in schedule.
-            if (!hasConflict(ride)) {
-                // Adds ride to driver and rider's ride histories.
-                ((Person) driver).addToRideHistory(ride);
-                ((Person) rider).addToRideHistory(ride);
-                rideList.addRide(ride);
-                return true;
-            }
+    public int schedulePrivateRide(String pickupLocation, String dropoffLocation, ITimeSlot timeSlot, int riderId, int driverId){
+        IDriver driver = searchDriverById(driverId);
+        IRider rider = searchRiderById(riderId);
+        // Check if rider and driver exist & that there is no conflict.
+        if (driver == null || rider == null || hasConflict(timeSlot, driver) || hasConflict(timeSlot, rider)) {
+            return -1;
         }
-        return false;
+        int rideId = generateUniqueRideId();
+        IRide privateRide = new PrivateRide(rideId, pickupLocation, dropoffLocation, driver, timeSlot, rider);
+        // Add ride to driver and rider schedules.
+        driver.getSchedule().insert(timeSlot, privateRide);
+        rider.getSchedule().insert(timeSlot, privateRide);
+        // Add ride to indexes.
+        ridesById.insert(rideId, privateRide);
+        if (ridesByPickupLocation.findKey(pickupLocation))
+            ridesByPickupLocation.retrieve().insert(rideId, privateRide);
+        else {
+            ridesByPickupLocation.insert(pickupLocation, new BST<Integer, IRide>());
+            ridesByPickupLocation.retrieve().insert(rideId, privateRide);
+        }
+
+        if (ridesByPickupTime.findKey(timeSlot.getStart()))
+            ridesByPickupTime.retrieve().insert(rideId, privateRide);
+        else {
+            ridesByPickupTime.insert(timeSlot.getStart(), new BST<Integer, IRide>());
+            ridesByPickupTime.retrieve().insert(rideId, privateRide);
+        }
+        return rideId;
     }
 
     public int scheduleSharedRide(String pickupLocation, String dropoffLocation, ITimeSlot timeSlot, int[] riderIds, int driverId) {

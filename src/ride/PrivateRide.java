@@ -7,7 +7,7 @@ public class PrivateRide extends Ride implements IPrivateRide{
     private IRider rider;
 
     public PrivateRide(int rideID, String pickupLocation, String dropoffLocation, IDriver driver, ITimeSlot timeSlot, IRider rider) {
-        super(rideID, pickupLocation, dropoffLocation, driver, timeSlot);
+        super(rideID, pickupLocation, dropoffLocation, timeSlot, driver);
         this.rider = rider;
     }
 
